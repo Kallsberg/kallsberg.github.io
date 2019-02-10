@@ -1,0 +1,10 @@
+name: "my-website"
+navbar:
+  title: "My Website"
+  left:
+    - text: "Home"
+      href: index.html
+    - text: "Data"
+      href: formula12019.html
+output:
+  html_document: default

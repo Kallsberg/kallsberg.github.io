@@ -1,0 +1,135 @@
+---
+title: "Formula 1"
+output:
+  html_document: default
+---
+  
+```{r libraries and setup,include=FALSE}
+library(ggplot2)
+library(rvest)
+library(magrittr)
+library(httr)
+library(stringr)
+library(XML)
+library(knitr)
+library(png)
+library(kableExtra)
+library(plotly)
+opts_chunk$set(echo = FALSE)
+opts_chunk$set(warning = FALSE)
+opts_chunk$set(message = FALSE)
+
+```
+
+
+```{r extract race table, include=FALSE}
+get_cal <- read_html('https://www.formula1.com/en/latest/article.diary-dates-the-2019-f1-calendar-plus-pre-season-testing-details.BvtQrzJFXEsk2qqemiYue.html')
+get_cal
+
+# Getting race weekends from internet
+cal.from.web <- get_cal %>%
+  html_nodes( "table") %>%
+  html_table()
+calender <- cal.from.web[[3]]
+```
+
+```{r Race Table, fig.align='center'}
+DATES <- as.Date(paste(calender$Date,"2019",sep= ' '),format = '%b %d %Y')
+
+
+calender %>%
+  kable(booktabs = T) %>%
+  kable_styling() %>%
+  row_spec(which(Sys.Date() >= DATES), bold = T, color = "white", background = 'rgb(220,220,220)')
+
+```
+
+
+
+```{r Teams}
+get_team <- read_html('https://www.formula1.com/en/teams.html')
+
+# Getting teams from the interweb
+my.teams <- get_team %>%
+  html_nodes("h2") %>%
+  html_text
+
+
+#making the teams name pretty
+my.teams <- str_squish(gsub('[\r\n\t]',"",my.teams[3:12]))
+
+```
+
+
+
+```{r Drivers}
+my.drivers <- get_team %>%
+  html_nodes("li.teamteaser-driver") %>%
+  html_text()
+
+Team.Drivers <- data.frame(Driver = my.drivers, Teams = rep(my.teams,each = 2))
+```
+```{r Team color}
+color.f1 <- read_html('https://www.formula1.com/en/teams.html')
+
+col.from.web <- color.f1 %>%
+  html_nodes( "span.team-color")%>%
+  html_attr('style')
+
+colors <- (col2rgb(gsub('background: ',"",col.from.web[4:13])))
+RGBs <- vector()
+for(i in seq(1,28,3)){
+  RGBs[floor(i/3)+1] <- paste(colors[i],colors[(i+1)],colors[(i+2)])
+}
+RGBs <-paste("rgb(",RGBs,")",sep = '')
+```
+
+## Point for driver
+```{r Driver score}
+
+l <- list(
+  font = list(
+    family = "sans-serif",
+    size = 12,
+    color = "#000"),
+  bgcolor = "#E2E2E2",
+  bordercolor = "#FFFFFF",
+  borderwidth = 2,orientation = 'h')
+
+x <- seq(0,10,1)
+data <- data.frame(x)
+
+p1 <- plot_ly(data,type = 'scatter')
+for(i in seq(1,19,2)){
+  p1 <- add_trace(p1,y = i*sin(x), name = Team.Drivers$Driver[i], mode = 'lines+marker',line = list(color = RGBs[floor(i/2)+1]),marker = list(color=RGBs[floor(i/2)+1]),hoverlabel = list(bgcolor = RGBs[floor(i/2)+1])) 
+  p1 <- add_trace(p1,y = i*cos(x), name = Team.Drivers$Driver[i+1], mode = 'lines+marker',line = list(color = RGBs[floor(i/2)+1]),marker = list(color='rgb(57,255,20)'),hoverlabel = list(bgcolor = RGBs[floor(i/2)+1])) 
+}
+p1 <- layout(p1,plot_bgcolor='rgb(220,220,220)')
+p1 <- layout(p1,yaxis = list(title='Points'),xaxis = list(title = ''))
+p1 <- layout(p1,legend = l)
+
+p1
+```
+
+## Point for Team
+```{r Team score}
+x <- c(1:10)
+
+
+data <- data.frame(x)
+
+p2 <- plot_ly(data)
+for(i in 1:10){
+  p2 <- add_trace(p2,x = ~x,y = i*sin(x), name = my.teams[i],line = list(color = RGBs[i]),marker = list(color = RGBs[i]), mode = 'lines+marker',hoverlabel = list(bgcolor = RGBs[i]))
+}
+p2 <- layout(p2,plot_bgcolor='rgb(220,220,220)')
+p2 <- layout(p2,yaxis = list(title='Points'),xaxis = list(title = ''))
+p2 <- layout(p2,legend = l)
+
+p2
+
+```
+
+
+
+
